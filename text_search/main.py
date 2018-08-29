@@ -17,7 +17,7 @@ from bokeh.models import (
     TextInput,
 )
 from jinja2 import Template
-from pyspark import SparkContext, SQLContext, StorageLevel
+from pyspark import SparkContext, SQLContext
 from pyspark.sql.functions import udf
 from tornado.gen import coroutine
 
@@ -29,16 +29,15 @@ from tornado.gen import coroutine
 DATA_DIR = os.environ.get('DATA_DIR')
 APP_DIR = os.path.dirname(__file__)
 DATA_FILE = os.path.join(DATA_DIR, 'clean.parquet')
-EXECUTOR = ThreadPoolExecutor(max_workers=4)
+EXECUTOR = ThreadPoolExecutor(max_workers=2)
 
-doc = curdoc()
-sc = SparkContext.getOrCreate()
 spark = SQLContext(sc)
 st = sc.statusTracker()
 with open(os.path.join(APP_DIR, 'templates', 'results.jinja'), 'r') as f:
     results_template = Template(f.read())
 with open(os.path.join(APP_DIR, 'templates', 'spark.jinja'), 'r') as f:
     spark_template = Template(f.read())
+doc = curdoc()
 
 ###
 # Setup bokeh objects
@@ -148,7 +147,7 @@ def do_spark_computation(text_value):
         'script_url_nl', get_netloc_udf(sample.script_url)
     ).withColumn(
         'location_nl', get_netloc_udf(sample.location)
-    ).cache()
+    )
     filtered = sample.where(df[column_to_look_in.value].contains(text_value))
     total_count = sample.count()
     filtered_count = filtered.count()
