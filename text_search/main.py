@@ -9,14 +9,12 @@ from bokeh.io import curdoc
 from bokeh.layouts import layout, widgetbox
 from bokeh.models import (
     Button,
-    ColumnDataSource,
     Div,
     PreText,
     Select,
     Slider,
     TextInput,
 )
-from bokeh.plotting import figure
 from jinja2 import Template
 from pyspark import SparkContext, SQLContext
 from tornado.gen import coroutine
@@ -48,54 +46,32 @@ column_to_look_in = Select(
 text_to_find = TextInput(title="Text to search for", value="google-analytics")
 sample_frac = Slider(title="% of dataset to use", start=1, end=100, step=1, value=5)
 apply_button = Button(label="Run")
-progress_source = ColumnDataSource({'complete': [0]})
-progress_bar = figure(
-    tools='', height=40, width=300, outline_line_color=None, min_border=10
-)
-ready_color = 'mediumseagreen'
-process_color = 'lightblue'
-progress_bar_opts = dict(height=1, y=0, line_color=None)
-progress_bar_background = progress_bar.hbar(right=[1], color=ready_color, alpha=0.3, **progress_bar_opts)
-progress_bar.hbar(right='complete', color=process_color, source=progress_source, **progress_bar_opts)
-progress_bar.grid.visible = False
-progress_bar.axis.visible = False
-progress_bar.toolbar_location = None
+save_button = Button(label="Save Results")
 widgets = widgetbox(
     column_to_look_in,
     text_to_find,
     sample_frac,
     apply_button,
+    save_button,
     width=300,
 )
 results_head = Div(text="<h2>Results</h2>")
-results = PreText(css_classes=["results"], text="", width=700, height=500)
+results = PreText(text="", width=700, height=500)
+spark_info = Div(text="spark info")
 
 # Layout and add to doc
-doc.add_root(layout([[
-    [widgets, progress_bar],
-    [results_head, results]
-]]))
+doc.add_root(layout([
+    [widgets, [results_head, results, spark_info]]
+]))
 
 ###
 # Setup callbacks
 ###
 
-st = sc.statusTracker()
 
-
-def poll_progress_bar():
-    active_stage_ids = st.getActiveStageIds()
-    if len(active_stage_ids) == 0:
-        progress_bar_background.glyph.fill_color = ready_color
-        if progress_source.data['complete'][0] != 0:
-            progress_source.data = {'complete': [0]}
-        return
-    active_stage_id = active_stage_ids[0]
-    stage_info = st.getStageInfo(active_stage_id)
-    num_tasks = stage_info.numTasks
-    num_completed_tasks = stage_info.numCompletedTasks
-    progress_bar_background.glyph.fill_color = process_color
-    progress_source.data = {'complete': [num_completed_tasks / num_tasks]}
+def periodic_task():
+    t = time()
+    spark_info.text = f'time: {t}'
 
 
 def start_apply():
@@ -129,4 +105,4 @@ def get_new_data():
 
 
 apply_button.on_click(get_new_data)  # noqa
-doc.add_periodic_callback(poll_progress_bar, 200)
+doc.add_periodic_callback(periodic_task, 1000)
