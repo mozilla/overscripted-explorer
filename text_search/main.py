@@ -16,6 +16,7 @@ from bokeh.models import (
 )
 from jinja2 import Template
 from pyspark import SparkContext, SQLContext
+from pyspark.sql.functions import udf
 from tornado.gen import coroutine
 
 ###
@@ -74,7 +75,6 @@ doc.add_root(layout([
 ###
 
 
-
 def periodic_task():
     active_jobs = st.getActiveJobsIds()
     active_stages = st.getActiveStageIds()
@@ -92,17 +92,44 @@ def start_apply():
     apply_button.disabled = True
 
 
-def update_results(count):
-    apply_button.label = "Run"
-    apply_button.disabled = False
+def update_results(
+    total_count,
+    filtered_count,
+    script_url_n,
+    script_url_se,
+    location_n,
+    location_se,
+    script_url_nl_n,
+    script_url_nl_se,
+    location_nl_n,
+    location_nl_se
+):
+    pr = lambda x: f'{x:,}'
+    pc = lambda x: f'{x:.2%}'
+
     result_text = results_template.render(
-        count=f'{count:,}',
+        column=column_to_look_in.value,
+        text=text_to_find.value,
+        sample_size=sample_frac.value,
+        sample_n_rows=pr(total_count),
+        filtered_n_rows=pr(filtered_count),
+        percent_row=pc(filtered_count / total_count),
+        script_url_n=pr(script_url_n),
+        script_url_se=pr(script_url_se),
+        script_url_pc=pc(script_url_se / script_url_n),
+        location_n=pr(location_n),
+        location_se=pr(location_se),
+        location_pc=pc(location_se / location_n),
+        script_url_nl_n=pr(script_url_nl_n),
+        script_url_nl_se=pr(script_url_nl_se),
+        script_url_nl_pc=pc(script_url_nl_se / script_url_nl_n),
+        location_nl_n=pr(location_nl_n),
+        location_nl_se=pr(location_nl_se),
+        location_nl_pc=pc(location_nl_se / location_nl_n),
     )
     results.text = "\n".join([results.text, result_text])
-
-
-def get_count(df):
-    return df.count()
+    apply_button.label = "Run"
+    apply_button.disabled = False
 
 
 @coroutine
@@ -112,9 +139,23 @@ def get_new_data():
     df = spark.read.parquet(DATA_FILE)
     frac = sample_frac.value / 100
     sample = df.sample(False, frac)
-    rows = sample.where(df[column_to_look_in.value].contains(text_to_find.value))
-    count = yield EXECUTOR.submit(get_count, rows)
-    doc.add_next_tick_callback(partial(update_results, count))
+    filtered = sample.where(df[column_to_look_in.value].contains(text_to_find.value))
+
+    total_count = yield EXECUTOR.submit(sample.count)
+    filtered_count = yield EXECUTOR.submit(filtered.count)
+    doc.add_next_tick_callback(partial(
+        update_results,
+        total_count,
+        filtered_count,
+        script_url_n=script_url_n,
+        script_url_se=script_url_se,
+        location_n=location_n,
+        location_se=location_se,
+        script_url_nl_n=script_url_nl_n,
+        script_url_nl_se=script_url_nl_se,
+        location_nl_n=location_nl_n,
+        location_nl_se=location_nl_se,
+    ))
 
 
 apply_button.on_click(get_new_data)  # noqa

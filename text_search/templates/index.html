@@ -23,10 +23,11 @@
         word-wrap: break-word;
     }
 	.results {
-	  padding: 0.2em;
+	  padding: 0 2em;
       border-radius: 0.2em;
       background-color: whitesmoke;
       border: 1px solid lightgray;
+      overflow: auto;
 	}
   </style>
 {% endblock %}
@@ -38,7 +39,8 @@
         href="https://github.com/mozilla/Overscripted-Data-Analysis-Challenge">OverScripted
         data set</a>.</p>
     <p>Results are displayed as a raw number of rows, which are individual javascript calls,
-    and then grouped on a number of parameters.</p>
+    and then grouped by the raw location and script_url and finally by the `netloc` which is the result
+    of running pythons built-in urlparser: <code>urlparse(url).netloc</code>.</p>
     <p>If you would like additional queries, options, views on the data, please
     <a href="https://github.com/mozilla/overscripted-explorer/issues/new">open an issue</a>.</p>
     <p>Gitub: <a href="https://github.com/mozilla/overscripted-explorer">mozilla/overscripted-explorer</a></p>
