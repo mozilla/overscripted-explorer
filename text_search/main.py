@@ -1,6 +1,5 @@
 import os
 
-from time import time
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
@@ -29,10 +28,13 @@ DATA_FILE = os.path.join(DATA_DIR, 'clean.parquet')
 EXECUTOR = ThreadPoolExecutor(max_workers=1)
 
 doc = curdoc()
-sc = SparkContext("local", "Text Search")
+sc = SparkContext.getOrCreate()
 spark = SQLContext(sc)
-with open(os.path.join(APP_DIR, 'results.jinja'), 'r') as f:
+st = sc.statusTracker()
+with open(os.path.join(APP_DIR, 'templates', 'results.jinja'), 'r') as f:
     results_template = Template(f.read())
+with open(os.path.join(APP_DIR, 'templates', 'spark.jinja'), 'r') as f:
+    spark_template = Template(f.read())
 
 ###
 # Setup bokeh objects
@@ -46,22 +48,25 @@ column_to_look_in = Select(
 text_to_find = TextInput(title="Text to search for", value="google-analytics")
 sample_frac = Slider(title="% of dataset to use", start=1, end=100, step=1, value=5)
 apply_button = Button(label="Run")
-save_button = Button(label="Save Results")
+spark_head = Div(text="""
+<h4>Spark info</h4>
+<p>If you see info here, but you're not running a job. Someone else is also using the server.</p>""")
+spark_info = PreText(css_classes=["spark-info"], text="")
 widgets = widgetbox(
     column_to_look_in,
     text_to_find,
     sample_frac,
     apply_button,
-    save_button,
+    spark_head,
+    spark_info,
     width=300,
 )
 results_head = Div(text="<h2>Results</h2>")
-results = PreText(text="", width=700, height=500)
-spark_info = Div(text="spark info")
+results = PreText(css_classes=["results"], text="", width=700, height=500)
 
 # Layout and add to doc
 doc.add_root(layout([
-    [widgets, [results_head, results, spark_info]]
+    [widgets, [results_head, results]]
 ]))
 
 ###
@@ -69,9 +74,17 @@ doc.add_root(layout([
 ###
 
 
+
 def periodic_task():
-    t = time()
-    spark_info.text = f'time: {t}'
+    active_jobs = st.getActiveJobsIds()
+    active_stages = st.getActiveStageIds()
+    active_stage_info = [st.getStageInfo(s) for s in active_stages]
+    spark_text = spark_template.render(
+        active_jobs=active_jobs,
+        active_stages=active_stages,
+        active_stage_info=active_stage_info,
+    )
+    spark_info.text = spark_text
 
 
 def start_apply():

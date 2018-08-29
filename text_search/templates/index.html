@@ -1,0 +1,48 @@
+{% extends base %}
+
+{% block postamble %}
+  <style>
+    body {
+        width: 1000px;
+        margin: auto;
+    }
+    h1, h2 {
+      margin: 2em 0 0 0;
+      color: #2e484c;
+      font-family: 'Julius Sans One', sans-serif;
+      text-transform: uppercase;
+    }
+    h1 {
+      font-size: 1.6em;
+    }
+    h2 {
+      font-size: 1.2em;
+    }
+    .spark-info pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+	.results {
+	  padding: 0.2em;
+      border-radius: 0.2em;
+      background-color: whitesmoke;
+      border: 1px solid lightgray;
+	}
+  </style>
+{% endblock %}
+
+{% block contents %}
+  <div>
+    <h1>OverScripted Explorer - Text Search</h1>
+    <p>A demo tool that lets you search for text in certain columns of the <a
+        href="https://github.com/mozilla/Overscripted-Data-Analysis-Challenge">OverScripted
+        data set</a>.</p>
+    <p>Results are displayed as a raw number of rows, which are individual javascript calls,
+    and then grouped on a number of parameters.</p>
+    <p>If you would like additional queries, options, views on the data, please
+    <a href="https://github.com/mozilla/overscripted-explorer/issues/new">open an issue</a>.</p>
+    <p>Gitub: <a href="https://github.com/mozilla/overscripted-explorer">mozilla/overscripted-explorer</a></p>
+  </div>
+  {{ super() }}
+{% endblock %}
+
