@@ -22,8 +22,6 @@ from pyspark.sql.functions import udf
 from tornado.gen import coroutine
 
 
-
-
 ###
 # Initial setup
 ###
@@ -100,10 +98,10 @@ def start_apply():
 def update_results(
     total_count,
     filtered_count,
-    # script_url_n,
-    # script_url_se,
-    # location_n,
-    # location_se,
+    script_url_n,
+    script_url_se,
+    location_n,
+    location_se,
     script_url_nl_n,
     script_url_nl_se,
     location_nl_n,
@@ -119,12 +117,12 @@ def update_results(
         sample_n_rows=pr(total_count),
         filtered_n_rows=pr(filtered_count),
         percent_row=pc(filtered_count / total_count),
-        # script_url_n=pr(script_url_n),
-        # script_url_se=pr(script_url_se),
-        # script_url_pc=pc(script_url_se / script_url_n),
-        # location_n=pr(location_n),
-        # location_se=pr(location_se),
-        # location_pc=pc(location_se / location_n),
+        script_url_n=pr(script_url_n),
+        script_url_se=pr(script_url_se),
+        script_url_pc=pc(script_url_se / script_url_n),
+        location_n=pr(location_n),
+        location_se=pr(location_se),
+        location_pc=pc(location_se / location_n),
         script_url_nl_n=pr(script_url_nl_n),
         script_url_nl_se=pr(script_url_nl_se),
         script_url_nl_pc=pc(script_url_nl_se / script_url_nl_n),
@@ -154,15 +152,19 @@ def do_spark_computation(text_value):
     filtered = sample.where(df[column_to_look_in.value].contains(text_value))
     total_count = sample.count()
     filtered_count = filtered.count()
-    # script_url_n = sample.select('script_url').distinct().count()
-    # script_url_se = filtered.select('script_url').distinct().count()
-    # location_n = sample.select('location').distinct().count()
-    # location_se = filtered.select('location').distinct().count()
+    script_url_n = sample.select('script_url').distinct().count()
+    script_url_se = filtered.select('script_url').distinct().count()
+    location_n = sample.select('location').distinct().count()
+    location_se = filtered.select('location').distinct().count()
     script_url_nl_n = sample.select('script_url_nl').distinct().count()
     script_url_nl_se = filtered.select('script_url_nl').distinct().count()
     location_nl_n = sample.select('location_nl').distinct().count()
     location_nl_se = filtered.select('location_nl').distinct().count()
-    return (total_count, filtered_count, script_url_nl_n, script_url_nl_se, location_nl_n, location_nl_se)
+    return (
+        total_count, filtered_count,
+        script_url_n, script_url_se, location_n, location_se,
+        script_url_nl_n, script_url_nl_se, location_nl_n, location_nl_se
+    )
 
 
 @coroutine
@@ -170,15 +172,17 @@ def do_spark_computation(text_value):
 def get_new_data():
     doc.add_next_tick_callback(start_apply)
     results = yield EXECUTOR.submit(do_spark_computation, text_to_find.value)
-    total_count, filtered_count, script_url_nl_n, script_url_nl_se, location_nl_n, location_nl_se = results
+    total_count, filtered_count, \
+        script_url_n, script_url_se, location_n, location_se, \
+        script_url_nl_n, script_url_nl_se, location_nl_n, location_nl_se = results
     doc.add_next_tick_callback(partial(
         update_results,
         total_count,
         filtered_count,
-        # script_url_n=script_url_n,
-        # script_url_se=script_url_se,
-        # location_n=location_n,
-        # location_se=location_se,
+        script_url_n=script_url_n,
+        script_url_se=script_url_se,
+        location_n=location_n,
+        location_se=location_se,
         script_url_nl_n=script_url_nl_n,
         script_url_nl_se=script_url_nl_se,
         location_nl_n=location_nl_n,
