@@ -1,0 +1,4 @@
+name: overscripted_explorer
+dependencies:
+    - pyspark
+    - bokeh
