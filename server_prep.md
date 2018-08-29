@@ -33,3 +33,5 @@ Run server in a tmux session (ahem - this isn't prod!)
     $ tmux new -s bokeh
     $ conda env create -f environment.yaml
     $ source activate overscripted_explorer
+    $ export DATA_DIR=/mnt/Data
+    $ bokeh serve --address 0.0.0.0 text_search --allow-websocket-origin=address-of-server:5006 
