@@ -31,6 +31,7 @@ APP_DIR = os.path.dirname(__file__)
 DATA_FILE = os.path.join(DATA_DIR, 'clean.parquet')
 EXECUTOR = ThreadPoolExecutor(max_workers=2)
 
+sc = SparkContext.getOrCreate()
 spark = SQLContext(sc)
 st = sc.statusTracker()
 with open(os.path.join(APP_DIR, 'templates', 'results.jinja'), 'r') as f:
