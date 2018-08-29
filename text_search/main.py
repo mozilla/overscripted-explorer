@@ -17,7 +17,7 @@ from bokeh.models import (
     TextInput,
 )
 from jinja2 import Template
-from pyspark import SparkContext, SQLContext
+from pyspark import SparkContext, SQLContext, StorageLevel
 from pyspark.sql.functions import udf
 from tornado.gen import coroutine
 
@@ -49,7 +49,7 @@ column_to_look_in = Select(
     options=["script_url", "location", "argument_0", "value_1000"],
     value="script_url",
 )
-text_to_find = TextInput(title="Text to search for", value="google-analytics")
+text_to_find = TextInput(title="Text to search for", value="modernizr")
 sample_frac = Slider(title="% of dataset to use", start=1, end=100, step=1, value=5)
 apply_button = Button(label="Run")
 spark_head = Div(text="""
@@ -148,7 +148,7 @@ def do_spark_computation(text_value):
         'script_url_nl', get_netloc_udf(sample.script_url)
     ).withColumn(
         'location_nl', get_netloc_udf(sample.location)
-    )
+    ).cache()
     filtered = sample.where(df[column_to_look_in.value].contains(text_value))
     total_count = sample.count()
     filtered_count = filtered.count()
