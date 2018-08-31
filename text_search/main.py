@@ -1,3 +1,4 @@
+import logging
 import os
 
 from concurrent.futures import ThreadPoolExecutor
@@ -30,6 +31,16 @@ DATA_DIR = os.environ.get('DATA_DIR')
 APP_DIR = os.path.dirname(__file__)
 DATA_FILE = os.path.join(DATA_DIR, 'clean.parquet')
 EXECUTOR = ThreadPoolExecutor(max_workers=2)
+
+logger = logging.getLogger('text_search')
+handler = logging.FileHandler(
+    filename=os.path.join(APP_DIR, 'text_search_log.txt'),
+    mode='a',
+)
+handler.setFormatter(
+    logging.Formatter(fmt='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+)
+logger.addHandler(handler)
 
 sc = SparkContext.getOrCreate()
 spark = SQLContext(sc)
@@ -93,6 +104,9 @@ def periodic_task():
 def start_apply():
     apply_button.label = "Running"
     apply_button.disabled = True
+    logger.info(
+        msg=f'column: {column_to_look_in.value} | search: {text_to_find.value} | sample size: {sample_frac.value}%'
+    )
 
 
 def update_results(
