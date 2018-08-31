@@ -47,6 +47,8 @@ spark = SQLContext(sc)
 st = sc.statusTracker()
 with open(os.path.join(APP_DIR, 'templates', 'results.jinja'), 'r') as f:
     results_template = Template(f.read())
+with open(os.path.join(APP_DIR, 'templates', 'no_results.jinja'), 'r') as f:
+    no_results_template = Template(f.read())
 with open(os.path.join(APP_DIR, 'templates', 'spark.jinja'), 'r') as f:
     spark_template = Template(f.read())
 doc = curdoc()
@@ -109,6 +111,17 @@ def start_apply():
     )
 
 
+def no_results():
+    result_text = no_results_template.render(
+        column=column_to_look_in.value,
+        text=text_to_find.value,
+        sample_size=sample_frac.value,
+    )
+    results.text = "\n".join([results.text, result_text])
+    apply_button.label = "Run"
+    apply_button.disabled = False
+
+
 def update_results(
     total_count,
     filtered_count,
@@ -164,8 +177,11 @@ def do_spark_computation(text_value):
         'location_nl', get_netloc_udf(sample.location)
     )
     filtered = sample.where(df[column_to_look_in.value].contains(text_value))
-    total_count = sample.count()
     filtered_count = filtered.count()
+    if filtered_count == 0:
+        # Quick escape hatch if no results
+        return None
+    total_count = sample.count()
     script_url_n = sample.select('script_url').distinct().count()
     script_url_se = filtered.select('script_url').distinct().count()
     location_n = sample.select('location').distinct().count()
@@ -186,22 +202,25 @@ def do_spark_computation(text_value):
 def get_new_data():
     doc.add_next_tick_callback(start_apply)
     results = yield EXECUTOR.submit(do_spark_computation, text_to_find.value)
-    total_count, filtered_count, \
-        script_url_n, script_url_se, location_n, location_se, \
-        script_url_nl_n, script_url_nl_se, location_nl_n, location_nl_se = results
-    doc.add_next_tick_callback(partial(
-        update_results,
-        total_count,
-        filtered_count,
-        script_url_n=script_url_n,
-        script_url_se=script_url_se,
-        location_n=location_n,
-        location_se=location_se,
-        script_url_nl_n=script_url_nl_n,
-        script_url_nl_se=script_url_nl_se,
-        location_nl_n=location_nl_n,
-        location_nl_se=location_nl_se,
-    ))
+    if not results:
+        doc.add_next_tick_callback(partial(no_results))
+    else:
+        total_count, filtered_count, \
+            script_url_n, script_url_se, location_n, location_se, \
+            script_url_nl_n, script_url_nl_se, location_nl_n, location_nl_se = results
+        doc.add_next_tick_callback(partial(
+            update_results,
+            total_count,
+            filtered_count,
+            script_url_n=script_url_n,
+            script_url_se=script_url_se,
+            location_n=location_n,
+            location_se=location_se,
+            script_url_nl_n=script_url_nl_n,
+            script_url_nl_se=script_url_nl_se,
+            location_nl_n=location_nl_n,
+            location_nl_se=location_nl_se,
+        ))
 
 
 apply_button.on_click(get_new_data)  # noqa
